@@ -7,8 +7,8 @@ from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import CompleteStyle, clear
-from prompt_toolkit.styles import Style
 from agent.react_agent import agent_run
+from config import STYLE
 
 try:
     from jwt import InsecureKeyLengthWarning
@@ -24,17 +24,6 @@ COMMANDS = {
     "/exit": "退出程序",
 }
 
-STYLE = Style.from_dict(
-    {
-        "prompt.brand": "bold #6C63FF",
-        "prompt.dim": "#666666",
-        "prompt.symbol": "bold #00A36C",
-        "toolbar": "bg:#1f2335 #f0f0f0",
-        "output.info": "#4B5563",
-        "output.ok": "#00A36C",
-        "output.warn": "#E67E22",
-    }
-)
 
 
 class SlashCommandCompleter(Completer):

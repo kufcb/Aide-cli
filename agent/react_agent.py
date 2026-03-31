@@ -7,6 +7,9 @@ from tools.file_tool import *
 from tools.terminal_tool import *
 from chat.zhipu_chat import model as llm
 from logs.logging_server import logger
+from prompt_toolkit import print_formatted_text
+from prompt_toolkit.formatted_text import HTML
+from config import STYLE
 
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
@@ -110,13 +113,12 @@ def agent_run(
                 # AI 回复
                 tool_calls = getattr(last_message, "tool_calls", None)
                 if tool_calls:
-                    tool_names = [tc.get("name", "unknown") for tc in tool_calls]
-                    print(f"正在思考... 调用工具中")
+                    print_formatted_text(HTML("<prompt.dim>正在思考... 调用工具中</prompt.dim>"),style=STYLE)
                 else:
-                    print(f"答案是:{content}")
+                    print(content)
 
             elif msg_type == "tool":
                 result = json.loads(content)
-                print(f"工具获取结果: {result}")
+                print_formatted_text(HTML(f"<prompt.dim>工具获取结果：{result}</prompt.dim>"),style=STYLE)
             elif msg_type == "human":
                 pass
