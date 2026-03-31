@@ -1,0 +1,14 @@
+[project]
+name = "aide-cli"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.9"
+dependencies = [
+    "dotenv>=0.9.9",
+    "inquirer>=3.4.0",
+    "langchain>=0.3.28",
+    "langgraph>=0.6.11",
+    "pyjwt>=2.10.1",
+    "prompt-toolkit>=3.0.52",
+    "langchain-community>=0.3.31",
+]
