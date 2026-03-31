@@ -16,10 +16,6 @@ if not logger.handlers:
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-
     # 按天滚动日志，保留30天的日志文件
     fh = TimedRotatingFileHandler(
         LOG_FILE,

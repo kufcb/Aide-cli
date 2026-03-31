@@ -106,13 +106,12 @@ def agent_run(
             logger.info(f"最新消息: {last_message}")
             msg_type = getattr(last_message, "type", "unknown")
             content = getattr(last_message, "content", "")
-            print(f"msg_type: {msg_type}")
             if msg_type == "ai":
                 # AI 回复
                 tool_calls = getattr(last_message, "tool_calls", None)
                 if tool_calls:
                     tool_names = [tc.get("name", "unknown") for tc in tool_calls]
-                    print(f"正在思考... 调用工具: {tool_names}")
+                    print(f"正在思考... 调用工具中")
                 else:
                     print(f"答案是:{content}")
 
