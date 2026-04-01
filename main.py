@@ -114,7 +114,6 @@ def main():
                 style=STYLE,
             ).strip()
         except KeyboardInterrupt:
-            print("\n已取消本次输入。")
             continue
         except EOFError:
             print("\nBye.")

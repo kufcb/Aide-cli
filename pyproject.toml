@@ -11,4 +11,5 @@ dependencies = [
     "pyjwt>=2.10.1",
     "prompt-toolkit>=3.0.52",
     "langchain-community>=0.3.31",
+    "ddgs>=9.8.0",
 ]

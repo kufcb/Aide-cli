@@ -5,6 +5,7 @@ from langgraph.graph.message import add_messages
 from langgraph.graph import StateGraph, END
 from tools.file_tool import *
 from tools.terminal_tool import *
+from tools.web_tool import *
 from chat.zhipu_chat import model as llm
 from logs.logging_server import logger
 from prompt_toolkit import print_formatted_text
@@ -15,7 +16,7 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
 
 
-tools = [write_to_file, read_file, run_terminal_command]
+tools = [write_to_file, read_file, run_terminal_command,duckduckgo_search]
 tools_by_name = {tool.name: tool for tool in tools}
 logger.info(f"现在有的工具:{tools_by_name}")
 model = llm.bind_tools(tools)
