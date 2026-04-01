@@ -101,7 +101,10 @@ def agent_run(
         user_input:str
 ):
     inputs = {
-        "messages": [HumanMessage(content=user_input)],
+        "messages": [
+            system_prompt,
+            HumanMessage(content=user_input)
+        ],
     }
     for event in graph.stream(inputs, stream_mode="values"):
         messages = event.get("messages", [])
