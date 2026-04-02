@@ -2,7 +2,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Union
+from typing import Any, Union
 from uuid import uuid4
 
 
@@ -30,13 +30,20 @@ class ChatSessionLogger:
     def _now_iso() -> str:
         return datetime.now().astimezone().isoformat(timespec="seconds")
 
+    @staticmethod
+    def _current_date_folder() -> str:
+        return datetime.now().strftime("%Y-%m-%d")
+
     def _append(self, payload: dict) -> None:
+        self.session.file_path.parent.mkdir(parents=True, exist_ok=True)
         with self.session.file_path.open("a", encoding="utf-8") as file:
             file.write(json.dumps(payload, ensure_ascii=False) + "\n")
 
     def new_session(self) -> SessionMeta:
         session_id = self._generate_session_id()
-        file_path = self.chat_dir / f"{session_id}.jsonl"
+        date_dir = self.chat_dir / self._current_date_folder()
+        date_dir.mkdir(parents=True, exist_ok=True)
+        file_path = date_dir / f"{session_id}.jsonl"
         self.session = SessionMeta(session_id=session_id, file_path=file_path, turn_id=0)
         self._append(
             {
@@ -72,3 +79,52 @@ class ChatSessionLogger:
                 "error": error_message,
             }
         )
+
+    def list_session_files(self) -> list[Path]:
+        session_files = [path for path in self.chat_dir.rglob("*.jsonl") if path.is_file()]
+        return sorted(session_files, key=lambda path: path.stat().st_mtime, reverse=True)
+
+    @staticmethod
+    def _read_jsonl_records(file_path: Path) -> list[dict[str, Any]]:
+        records: list[dict[str, Any]] = []
+        with file_path.open("r", encoding="utf-8") as file:
+            for line in file:
+                raw = line.strip()
+                if not raw:
+                    continue
+                try:
+                    parsed = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(parsed, dict):
+                    records.append(parsed)
+        return records
+
+    def read_history(self, limit: int = 10) -> list[dict[str, Any]]:
+        if limit <= 0:
+            return []
+
+        history: list[dict[str, Any]] = []
+        for file_path in self.list_session_files()[:limit]:
+            records = self._read_jsonl_records(file_path)
+            session_start = next((item for item in records if item.get("type") == "session_start"), {})
+            turns = [item for item in records if item.get("type") == "chat_turn"]
+            errors = [item for item in records if item.get("type") == "chat_error"]
+            last_timestamp = next(
+                (item.get("timestamp") for item in reversed(records) if item.get("timestamp")),
+                "",
+            )
+
+            history.append(
+                {
+                    "session_id": session_start.get("session_id", file_path.stem),
+                    "started_at": session_start.get("timestamp", ""),
+                    "last_timestamp": last_timestamp,
+                    "turn_count": len(turns),
+                    "error_count": len(errors),
+                    "file_path": file_path,
+                    "turns": turns,
+                }
+            )
+
+        return history

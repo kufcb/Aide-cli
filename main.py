@@ -22,10 +22,16 @@ except Exception:
 
 COMMANDS = {
     "/help": "显示命令列表",
+    "/history": "查看历史聊天记录",
     "/new": "新建会话",
     "/clear": "清空屏幕",
     "/exit": "退出程序",
 }
+
+HISTORY_DEFAULT_LIMIT = 10
+HISTORY_MAX_LIMIT = 50
+HISTORY_PREVIEW_TURNS = 2
+HISTORY_PREVIEW_TEXT_LIMIT = 72
 
 
 
@@ -122,6 +128,68 @@ def print_help():
     print()
 
 
+def _truncate_preview_text(text: str, limit: int = HISTORY_PREVIEW_TEXT_LIMIT) -> str:
+    normalized = " ".join(str(text).split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 3] + "..."
+
+
+def _parse_history_limit(message: str) -> tuple[bool, int]:
+    parts = message.split()
+    if len(parts) == 1:
+        return True, HISTORY_DEFAULT_LIMIT
+    if len(parts) != 2:
+        return False, HISTORY_DEFAULT_LIMIT
+
+    try:
+        parsed_limit = int(parts[1])
+    except ValueError:
+        return False, HISTORY_DEFAULT_LIMIT
+
+    if parsed_limit <= 0:
+        return False, HISTORY_DEFAULT_LIMIT
+
+    return True, min(parsed_limit, HISTORY_MAX_LIMIT)
+
+
+def print_history(session_logger: ChatSessionLogger, session_limit: int) -> None:
+    history_sessions = session_logger.read_history(limit=session_limit)
+    if not history_sessions:
+        print("\n暂无历史聊天记录。\n")
+        return
+
+    print(f"\n最近 {len(history_sessions)} 个会话（最新在前）")
+    for index, session in enumerate(history_sessions, start=1):
+        session_id = session.get("session_id", "-")
+        started_at = session.get("started_at", "-") or "-"
+        last_timestamp = session.get("last_timestamp", "-") or "-"
+        turn_count = session.get("turn_count", 0)
+        error_count = session.get("error_count", 0)
+        file_path = session.get("file_path")
+        file_display = file_path.as_posix() if hasattr(file_path, "as_posix") else str(file_path)
+
+        print(
+            f"{index}. Session: {session_id} | 开始: {started_at} | 最近: {last_timestamp} | "
+            f"对话: {turn_count} | 错误: {error_count}"
+        )
+        print(f"   文件: {file_display}")
+
+        turns = session.get("turns", [])
+        if not turns:
+            print("   预览: 暂无对话内容")
+            continue
+
+        for turn in turns[-HISTORY_PREVIEW_TURNS:]:
+            turn_id = turn.get("turn_id", "-")
+            user_preview = _truncate_preview_text(turn.get("user_input", ""))
+            assistant_preview = _truncate_preview_text(turn.get("assistant_output", ""))
+            print(f"   Turn {turn_id} Q: {user_preview}")
+            print(f"   Turn {turn_id} A: {assistant_preview}")
+
+    print()
+
+
 def handle_command(message: str, session_logger: ChatSessionLogger) -> bool:
     if message == "/exit":
         print("Bye.")
@@ -137,11 +205,21 @@ def handle_command(message: str, session_logger: ChatSessionLogger) -> bool:
         print_formatted_text(
             HTML(
                 f"<output.info>Session ID: {session_logger.session.session_id}  |  日志文件: "
-                f"chat/{session_logger.session.file_path.name}</output.info>"
+                f"{session_logger.session.file_path.as_posix()}</output.info>"
             ),
             style=STYLE,
         )
         print_welcome(session_logger)
+        return True
+
+    if message.startswith("/history"):
+        is_valid, session_limit = _parse_history_limit(message)
+        if not is_valid:
+            print("用法: /history 或 /history <会话数量>")
+            print(f"示例: /history {HISTORY_DEFAULT_LIMIT}")
+            return True
+
+        print_history(session_logger, session_limit)
         return True
 
     if message == "/clear":

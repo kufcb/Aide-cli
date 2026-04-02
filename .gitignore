@@ -3,4 +3,4 @@ logs/
 
 .env
 
-chat/*.jsonl
+chat/*/*.jsonl
