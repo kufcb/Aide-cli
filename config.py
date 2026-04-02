@@ -20,5 +20,11 @@ STYLE = Style.from_dict(
         "output.info": "#4B5563",
         "output.ok": "#00A36C",
         "output.warn": "#E67E22",
+        "welcome.border": "#6B7280",
+        "welcome.title": "bold #0F172A",
+        "welcome.subtitle": "#374151",
+        "welcome.section": "bold #0EA5E9",
+        "welcome.body": "#111827",
+        "welcome.art": "bold #D97706",
     }
 )

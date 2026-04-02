@@ -6,8 +6,9 @@ from langgraph.graph import StateGraph, END
 from tools.file_tool import *
 from tools.terminal_tool import *
 from tools.web_tool import *
-from chat.zhipu_chat import model as llm
+from models.zhipu_chat import model as llm
 from logs.logging_server import logger
+from agent.memory_agent import read_memory_snapshot, trigger_memory_update_async
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import HTML
 from config import STYLE
@@ -20,7 +21,21 @@ tools = [write_to_file, read_file, run_terminal_command,duckduckgo_search]
 tools_by_name = {tool.name: tool for tool in tools}
 logger.info(f"现在有的工具:{tools_by_name}")
 model = llm.bind_tools(tools)
-system_prompt = SystemMessage(content="你是一个 AI 助手。如果需要,你可以使用工具来获取信息来构建你的答案。")
+BASE_SYSTEM_PROMPT = "你是一个 AI 助手。如果需要,你可以使用工具来获取信息来构建你的答案。"
+
+
+def build_system_prompt() -> SystemMessage:
+    user_preferences = read_memory_snapshot().strip()
+    if not user_preferences:
+        return SystemMessage(content=BASE_SYSTEM_PROMPT)
+
+    return SystemMessage(
+        content=(
+            f"{BASE_SYSTEM_PROMPT}\n\n"
+            "以下是你已知的用户偏好记忆，它被记录下memory目录下的 Aide.md 文件中，请优先遵循：\n"
+            f"{user_preferences}"
+        )
+    )
 
 def call_model(state: AgentState):
     response = model.invoke(state["messages"])
@@ -97,15 +112,41 @@ graph_builder.add_conditional_edges(
 # 编译图，生成可执行的工作流
 graph = graph_builder.compile()
 
+
+def _handle_memory_future(future) -> None:
+    try:
+        result = future.result()
+        logger.info(f"异步用户偏好记忆更新结果: {result}")
+    except Exception:
+        logger.exception("异步用户偏好记忆更新任务执行失败")
+
+def _normalize_ai_content(content) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict):
+                parts.append(str(item.get("text", "")))
+            else:
+                parts.append(str(item))
+        return "".join(parts)
+    return str(content)
+
+
 def agent_run(
         user_input:str
-):
+) -> str:
+    memory_future = trigger_memory_update_async(user_input)
+    memory_future.add_done_callback(_handle_memory_future)
+
     inputs = {
         "messages": [
-            system_prompt,
+            build_system_prompt(),
             HumanMessage(content=user_input)
         ],
     }
+    final_ai_output = ""
     for event in graph.stream(inputs, stream_mode="values"):
         messages = event.get("messages", [])
         if messages:
@@ -119,10 +160,14 @@ def agent_run(
                 if tool_calls:
                     print_formatted_text(HTML("<prompt.dim>正在思考... 调用工具中</prompt.dim>"),style=STYLE)
                 else:
-                    print(content)
+                    normalized_content = _normalize_ai_content(content)
+                    print(normalized_content)
+                    final_ai_output = normalized_content
 
             elif msg_type == "tool":
                 result = json.loads(content)
                 print_formatted_text(HTML(f"<prompt.dim>工具获取结果：{result}</prompt.dim>"),style=STYLE)
             elif msg_type == "human":
                 pass
+
+    return final_ai_output
