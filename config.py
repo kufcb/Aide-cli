@@ -4,10 +4,27 @@ from prompt_toolkit.styles import Style
 
 load_dotenv(".env")
 
+
+def _get_bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "n", "off"}:
+        return False
+    return default
+
 ZHIPUAI_API_KEY = os.getenv("ZHIPUAI_API_KEY")
 
 MODEL_NAME = os.getenv("MODEL_NAME", "GLM-4.7-Flash")
 MODEL_TEMPERATURE = float(os.getenv("MODEL_TEMPERATURE", "0.5"))
+TERMINAL_COMMAND_CONFIRM_ENABLED = _get_bool_env(
+    "TERMINAL_COMMAND_CONFIRM_ENABLED",
+    True,
+)
 
 
 
